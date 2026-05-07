@@ -6,14 +6,27 @@
         <field name="model">product.import.wizard</field>
         <field name="arch" type="xml">
             <form string="Import Products from XLSX">
-                <group>
+                <field name="state" invisible="1"/>
+
+                <!-- Step 1: upload -->
+                <group invisible="state != 'upload'">
                     <field name="file_data" filename="file_name" widget="binary"
-                           string="XLSX File"/>
+                           string="XLSX File" required="state == 'upload'"/>
                     <field name="file_name" invisible="1"/>
                 </group>
+
+                <!-- Step 2: preview table -->
+                <div invisible="state != 'preview'">
+                    <field name="preview_html" widget="html"/>
+                </div>
+
                 <footer>
+                    <button name="action_preview" string="Preview" type="object"
+                            class="btn-primary" invisible="state != 'upload'"/>
                     <button name="action_import" string="Import" type="object"
-                            class="btn-primary"/>
+                            class="btn-primary" invisible="state != 'preview'"/>
+                    <button name="action_back" string="Back" type="object"
+                            class="btn-secondary" invisible="state != 'preview'"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
