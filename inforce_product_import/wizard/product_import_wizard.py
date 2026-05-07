@@ -17,7 +17,7 @@ _COLUMNS = {
     'Ціна за одиницю': 'price',
 }
 
-_PREVIEW_LIMIT = 50
+_PREVIEW_LIMIT = 5000
 
 
 class ProductImportWizard(models.TransientModel):
