@@ -134,6 +134,15 @@ class ProductImportWizard(models.TransientModel):
             created, updated, price_warnings,
         )
 
+        self.env['product.import.log'].create({
+            'file_name': self.file_name,
+            'created': created,
+            'updated': updated,
+            'skipped': 0,
+            'price_warnings': price_warnings,
+            'state': 'warning' if price_warnings else 'success',
+        })
+
         msg = _('%d products created, %d updated.') % (created, updated)
         if price_warnings:
             msg += ' ' + _('%d products have zero or negative price.') % price_warnings

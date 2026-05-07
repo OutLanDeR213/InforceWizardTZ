@@ -9,6 +9,7 @@
         'views/product_brand_views.xml',
         'views/product_template_views.xml',
         'views/product_import_wizard_views.xml',
+        'views/product_import_log_views.xml',
     ],
     'installable': True,
     'license': 'LGPL-3',

@@ -2,3 +2,5 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_product_brand_user,product.brand user,model_product_brand,base.group_user,1,1,1,0
 access_product_brand_manager,product.brand manager,model_product_brand,base.group_system,1,1,1,1
 access_product_import_wizard,product.import.wizard,model_product_import_wizard,base.group_user,1,1,1,1
+access_product_import_log_user,product.import.log user,model_product_import_log,base.group_user,1,0,0,0
+access_product_import_log_manager,product.import.log manager,model_product_import_log,base.group_system,1,1,1,1
