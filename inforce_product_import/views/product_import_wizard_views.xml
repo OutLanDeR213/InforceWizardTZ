@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_import_wizard_view_form" model="ir.ui.view">
+        <field name="name">product.import.wizard.form</field>
+        <field name="model">product.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Products from XLSX">
+                <group>
+                    <field name="file_data" filename="file_name" widget="binary"
+                           string="XLSX File"/>
+                    <field name="file_name" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_import" string="Import" type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_product_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import Products from XLSX</field>
+        <field name="res_model">product.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu item wired under Inventory > Products; will be refined in Step 3 -->
+    <menuitem
+        id="menu_product_import_wizard"
+        name="Import from XLSX"
+        action="action_product_import_wizard"
+        sequence="100"/>
+
+</odoo>
