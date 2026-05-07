@@ -34,11 +34,15 @@ class ProductImportWizard(models.TransientModel):
         if not self.file_name or not self.file_name.lower().endswith('.xlsx'):
             raise UserError(_('Please upload a valid .xlsx file.'))
 
-        wb = openpyxl.load_workbook(
-            io.BytesIO(base64.b64decode(self.file_data)),
-            read_only=True,
-            data_only=True,
-        )
+        try:
+            wb = openpyxl.load_workbook(
+                io.BytesIO(base64.b64decode(self.file_data)),
+                read_only=True,
+                data_only=True,
+            )
+        except Exception:
+            raise UserError(_('Could not read the file. Make sure it is a valid .xlsx file.'))
+
         rows = list(wb.active.iter_rows(values_only=True))
         if not rows:
             raise UserError(_('The file is empty.'))
@@ -49,7 +53,7 @@ class ProductImportWizard(models.TransientModel):
         brand_cache = {}
         uom_cache = {}
 
-        created = updated = 0
+        created = updated = skipped = 0
         for row in rows[1:]:
             if all(v is None for v in row):
                 continue
@@ -57,18 +61,23 @@ class ProductImportWizard(models.TransientModel):
                 key: (str(row[idx]).strip() if row[idx] is not None else '')
                 for key, idx in col_map.items()
             }
-            if not data['sku']:
+            if not data['sku'] or not data['name']:
+                skipped += 1
                 continue
             is_new = self._import_row(data, brand_cache, uom_cache)
             created += is_new
             updated += not is_new
+
+        msg = _('%d products created, %d updated.') % (created, updated)
+        if skipped:
+            msg += ' ' + _('%d rows skipped (missing SKU or name).') % skipped
 
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('Import complete'),
-                'message': _('%d products created, %d updated.') % (created, updated),
+                'message': msg,
                 'type': 'success',
                 'sticky': False,
             },
