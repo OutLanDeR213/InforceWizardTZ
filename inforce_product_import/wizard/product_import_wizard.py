@@ -1,8 +1,11 @@
 import base64
 import io
+import logging
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 # Maps xlsx column headers to internal keys
 _COLUMNS = {
@@ -52,8 +55,10 @@ class ProductImportWizard(models.TransientModel):
         # Per-import caches to avoid redundant DB lookups
         brand_cache = {}
         uom_cache = {}
+        attr_cache = {}
+        attr_val_cache = {}
 
-        created = updated = skipped = 0
+        created = updated = skipped = price_warnings = 0
         for row in rows[1:]:
             if all(v is None for v in row):
                 continue
@@ -64,13 +69,32 @@ class ProductImportWizard(models.TransientModel):
             if not data['sku'] or not data['name']:
                 skipped += 1
                 continue
-            is_new = self._import_row(data, brand_cache, uom_cache)
+
+            price = self._to_float(data['price'])
+            if price <= 0:
+                price_warnings += 1
+                _logger.warning('Product %s (SKU %s): price is %s', data['name'], data['sku'], price)
+
+            is_new = self._import_row(data, brand_cache, uom_cache, attr_cache, attr_val_cache)
             created += is_new
             updated += not is_new
+            _logger.info(
+                '%s product %s (SKU %s)',
+                'Created' if is_new else 'Updated',
+                data['name'],
+                data['sku'],
+            )
 
         msg = _('%d products created, %d updated.') % (created, updated)
         if skipped:
             msg += ' ' + _('%d rows skipped (missing SKU or name).') % skipped
+        if price_warnings:
+            msg += ' ' + _('%d products have zero or negative price.') % price_warnings
+
+        _logger.info(
+            'Import finished: %d created, %d updated, %d skipped, %d price warnings',
+            created, updated, skipped, price_warnings,
+        )
 
         return {
             'type': 'ir.actions.client',
@@ -78,8 +102,8 @@ class ProductImportWizard(models.TransientModel):
             'params': {
                 'title': _('Import complete'),
                 'message': msg,
-                'type': 'success',
-                'sticky': False,
+                'type': 'success' if not price_warnings else 'warning',
+                'sticky': bool(price_warnings),
             },
         }
 
@@ -99,7 +123,7 @@ class ProductImportWizard(models.TransientModel):
             )
         return result
 
-    def _import_row(self, data, brand_cache, uom_cache):
+    def _import_row(self, data, brand_cache, uom_cache, attr_cache, attr_val_cache):
         """Create or update a product.template from a parsed row."""
         template = self.env['product.template'].search(
             [('default_code', '=', data['sku'])], limit=1
@@ -129,11 +153,11 @@ class ProductImportWizard(models.TransientModel):
             template.write(vals)
 
         if data['variant']:
-            self._apply_variant(template, data['variant'])
+            self._apply_variant(template, data['variant'], attr_cache, attr_val_cache)
 
         return is_new
 
-    def _apply_variant(self, template, variant_str):
+    def _apply_variant(self, template, variant_str, attr_cache, attr_val_cache):
         """Attach an 'Attribute: Value' variant string to the product template."""
         attr_name, _, value_name = variant_str.partition(':')
         attr_name, value_name = attr_name.strip(), value_name.strip()
@@ -144,14 +168,20 @@ class ProductImportWizard(models.TransientModel):
         AttrVal = self.env['product.attribute.value']
         AttrLine = self.env['product.template.attribute.line']
 
-        attribute = (
-            Attr.search([('name', '=', attr_name)], limit=1)
-            or Attr.create({'name': attr_name})
-        )
-        attr_value = (
-            AttrVal.search([('attribute_id', '=', attribute.id), ('name', '=', value_name)], limit=1)
-            or AttrVal.create({'attribute_id': attribute.id, 'name': value_name})
-        )
+        if attr_name not in attr_cache:
+            attr_cache[attr_name] = (
+                Attr.search([('name', '=', attr_name)], limit=1)
+                or Attr.create({'name': attr_name})
+            )
+        attribute = attr_cache[attr_name]
+
+        val_key = (attribute.id, value_name)
+        if val_key not in attr_val_cache:
+            attr_val_cache[val_key] = (
+                AttrVal.search([('attribute_id', '=', attribute.id), ('name', '=', value_name)], limit=1)
+                or AttrVal.create({'attribute_id': attribute.id, 'name': value_name})
+            )
+        attr_value = attr_val_cache[val_key]
 
         line = AttrLine.search(
             [('product_tmpl_id', '=', template.id), ('attribute_id', '=', attribute.id)],
