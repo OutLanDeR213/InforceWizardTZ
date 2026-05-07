@@ -2,8 +2,6 @@ import base64
 import io
 import logging
 
-from markupsafe import Markup, escape
-
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
@@ -54,45 +52,22 @@ class ProductImportWizard(models.TransientModel):
         update_count = len(data_rows) - new_count
         shown = data_rows[:_PREVIEW_LIMIT]
 
-        rows_html = Markup('').join(
-            Markup(
-                '<tr>'
-                '<td>{sku}</td><td>{name}</td><td>{brand}</td>'
-                '<td>{price}</td>'
-                '<td style="color:{color};font-weight:bold">{status}</td>'
-                '</tr>'
-            ).format(
-                sku=escape(d['sku']),
-                name=escape(d['name']),
-                brand=escape(d['brand']),
-                price=escape(d['price']),
-                color='#e67e00' if d['sku'] in existing_skus else '#28a745',
-                status=_('Update') if d['sku'] in existing_skus else _('New'),
-            )
+        rows = [
+            {
+                **d,
+                'color': '#e67e00' if d['sku'] in existing_skus else '#28a745',
+                'status': _('Update') if d['sku'] in existing_skus else _('New'),
+            }
             for d in shown
-        )
+        ]
 
-        extra = (
-            Markup('<p><i>... and {} more rows not shown.</i></p>').format(len(data_rows) - _PREVIEW_LIMIT)
-            if len(data_rows) > _PREVIEW_LIMIT else Markup('')
-        )
-
-        self.preview_html = Markup('''
-            <p><b>{summary}</b></p>
-            <table class="table table-sm table-bordered">
-                <thead class="table-light">
-                    <tr>
-                        <th>SKU</th><th>Name</th><th>Brand</th>
-                        <th>Price</th><th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>{rows}</tbody>
-            </table>
-            {extra}
-        ''').format(
-            summary=_('%d rows — %d new, %d to update') % (len(data_rows), new_count, update_count),
-            rows=rows_html,
-            extra=extra,
+        self.preview_html = self.env['ir.qweb']._render(
+            'inforce_product_import.import_preview',
+            {
+                'summary': _('%d rows — %d new, %d to update') % (len(data_rows), new_count, update_count),
+                'rows': rows,
+                'extra_count': len(data_rows) - _PREVIEW_LIMIT if len(data_rows) > _PREVIEW_LIMIT else 0,
+            },
         )
         self.state = 'preview'
         return self._reopen()
