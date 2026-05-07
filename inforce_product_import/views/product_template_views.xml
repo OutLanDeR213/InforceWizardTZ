@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- brand_id on the product form, after category -->
     <record id="product_template_view_form_inherit_brand" model="ir.ui.view">
         <field name="name">product.template.form.inherit.brand</field>
         <field name="model">product.template</field>
@@ -9,6 +10,18 @@
             <xpath expr="//field[@name='categ_id']" position="after">
                 <field name="brand_id"/>
             </xpath>
+        </field>
+    </record>
+
+    <!-- brand_id in product search -->
+    <record id="product_template_view_search_inherit_brand" model="ir.ui.view">
+        <field name="name">product.template.search.inherit.brand</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="brand_id"/>
+            </field>
         </field>
     </record>
 

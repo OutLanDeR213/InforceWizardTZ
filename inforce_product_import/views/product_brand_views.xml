@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="product_brand_view_search" model="ir.ui.view">
+        <field name="name">product.brand.search</field>
+        <field name="model">product.brand</field>
+        <field name="arch" type="xml">
+            <search string="Brands">
+                <field name="name"/>
+                <filter name="archived" string="Archived"
+                        domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="product_brand_view_list" model="ir.ui.view">
         <field name="name">product.brand.list</field>
         <field name="model">product.brand</field>
         <field name="arch" type="xml">
             <list string="Brands">
                 <field name="name"/>
-                <field name="active"/>
             </list>
         </field>
     </record>
@@ -18,9 +29,11 @@
         <field name="arch" type="xml">
             <form string="Brand">
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
                     <group>
                         <field name="name"/>
-                        <field name="active"/>
+                        <field name="active" invisible="1"/>
                     </group>
                 </sheet>
             </form>
@@ -31,6 +44,7 @@
         <field name="name">Brands</field>
         <field name="res_model">product.brand</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
     </record>
 
 </odoo>
