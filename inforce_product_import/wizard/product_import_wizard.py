@@ -41,7 +41,7 @@ class ProductImportWizard(models.TransientModel):
         if not self.file_name or not self.file_name.lower().endswith('.xlsx'):
             raise UserError(_('Please upload a valid .xlsx file.'))
 
-        data_rows = self._load_rows()
+        data_rows, _skipped = self._load_rows()
         existing_skus = set(
             self.env['product.template']
             .search([('default_code', 'in', [d['sku'] for d in data_rows])])
@@ -80,7 +80,7 @@ class ProductImportWizard(models.TransientModel):
 
     def action_import(self):
         """Read the uploaded XLSX and create/update product records."""
-        data_rows = self._load_rows()
+        data_rows, skipped = self._load_rows()
 
         brand_cache = {}
         uom_cache = {}
@@ -113,7 +113,7 @@ class ProductImportWizard(models.TransientModel):
             'file_name': self.file_name,
             'created': created,
             'updated': updated,
-            'skipped': 0,
+            'skipped': skipped,
             'price_warnings': price_warnings,
             'state': 'warning' if price_warnings else 'success',
         })
@@ -148,7 +148,7 @@ class ProductImportWizard(models.TransientModel):
         }
 
     def _load_rows(self):
-        """Parse the uploaded file and return a list of validated row dicts."""
+        """Parse the uploaded file and return (data_rows, skipped_count)."""
         try:
             import openpyxl
         except ImportError:
@@ -160,11 +160,10 @@ class ProductImportWizard(models.TransientModel):
                 read_only=True,
                 data_only=True,
             )
-        except Exception:
+        except (TypeError, ValueError, Exception):
             raise UserError(_('Could not read the file. Make sure it is a valid .xlsx file.'))
 
         sheet = wb.active
-
         rows = list(sheet.iter_rows(values_only=True))
         if not rows:
             raise UserError(_('The selected sheet is empty.'))
@@ -187,7 +186,7 @@ class ProductImportWizard(models.TransientModel):
         if skipped:
             _logger.warning('%d rows skipped due to missing SKU or name.', skipped)
 
-        return data_rows
+        return data_rows, skipped
 
     def _parse_header(self, header_row):
         """Return {key: col_index} for all expected columns."""
